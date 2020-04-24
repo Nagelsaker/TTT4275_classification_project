@@ -1,7 +1,7 @@
 import random
 import math
 import numpy as np
-
+import matplotlib.pyplot as plt
 from astropy.io import ascii
 
 
@@ -10,6 +10,7 @@ def main():
 
 def sigmoid(x):
   return 1 / (1 + np.exp(-x))
+
 
 
 def linClassifier(inputSize):
@@ -117,6 +118,21 @@ def train(x_k, t_k, W_k, dataSize, MSE, grad_MSE_W):
     grad_MSE_W += np.matmul(np.multiply(grad_MSE_gk, grad_g_zk), grad_W_zk)
     return grad_MSE_W, MSE
 
+def updateConfMatrix(true, classified, confMatrix):
+    confMatrix[true][classified] += 1
+    return confMatrix    
+
+def plotConfusionMatrix(conf):    
+    data=[[10,10,10,5,5,5,2,2,2,4,4,4,4,4,4,5,5,5],[10,10,10,5,5,5,2,2,2,4,4,4,4,4,4,5,5,5],[10,10,10,5,5,5,2,2,2,4,4,4,4,4,4,5,5,5],[10,10,10,5,5,5,2,2,2,4,4,4,4,4,4,5,5,5]]
+    fig= plt.figure()
+    ax = fig.add_subplot(111)
+    ax.axis('off')
+    rows=['AB','BC','SK','MB']
+    cols=["Gas", "Wk/Wk", "Yr/Yr","Oil", "Wk/Wk", "Yr/Yr","Bit", "Wk/Wk", "Yr/Yr","Total", "Wk/Wk", "Yr/Yr","Hor", "Wk/Wk", "Yr/Yr","Vert/Dir", "Wk/Wk", "Yr/Yr"]
+    table = ax.table(cellText=data, colLabels=cols,rowLabels=rows, loc='upper center',cellLoc='center')
+    table.auto_set_font_size(True)
+    table.scale(1.5,1.5)
+    #plt.savefig(filenameTemplate2, format='png',bbox_inches='tight')
 
 
 if __name__ == "__main__":
