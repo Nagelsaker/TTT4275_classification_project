@@ -1,6 +1,9 @@
 import random
 import math
+
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 
 from astropy.io import ascii
 
@@ -15,7 +18,7 @@ def loadData():
     x1data = ascii.read("/home/simon/repos/TTT4275_classification_project/Iris_TTT4275/class_1", delimiter=',').as_array()
     x2data = ascii.read("/home/simon/repos/TTT4275_classification_project/Iris_TTT4275/class_2", delimiter=',').as_array()
     x3data = ascii.read("/home/simon/repos/TTT4275_classification_project/Iris_TTT4275/class_3", delimiter=',').as_array()
-    return list(x1data, x2data, x3data)
+    return (x1data, x2data, x3data)
 
 def getDataSets(dataList, labels, validationSize, inputSize):
     x1data, x2data, x3data = dataList
@@ -43,7 +46,7 @@ def getDataSets(dataList, labels, validationSize, inputSize):
     random.shuffle(x2allTraining)
     random.shuffle(x3allTraining)
 
-    return list(x1allTraining, x2allTraining, x3allTraining), list(validationSet, validation_t_k)
+    return (x1allTraining, x2allTraining, x3allTraining), (validationSet, validation_t_k)
 
 def getBatch(data, labels, batchSize, inputSize):
     x1allTraining, x2allTraining, x3allTraining = data
@@ -60,18 +63,28 @@ def getBatch(data, labels, batchSize, inputSize):
     batch_t_k = np.append(batch_t_k, [virginica for i in range(int(batchSize/3))])
     batch_t_k = batch_t_k.reshape(batchSize, 3)
 
-    return list(batch, batch_t_k)
+    return (batch, batch_t_k)
+
+def getPredictionFromOutput(output):
+    prediction = np.zeros(shape=(3,1))
+    index = np.argmax(output, axis=0)
+    prediction[index] = 1
+    return prediction.reshape(1,3)
 
 def linClassifier(inputSize):
     alpha = 0.005
     batchSize = 90
-    iterations = 1000
+    iterations = 500
     validationSize = 20
 
     setosa = [0,0,1]
     versicolor = [0,1,0]
     virginica = [1,0,0]
-    labels = list(setosa, versicolor, virginica)
+    labels = (setosa, versicolor, virginica)
+
+    names = {   2 : 'setosa',
+                1 : 'versicolor',
+                0 : 'virginica'}
 
     W_k = np.zeros(shape=(3,inputSize))
     for n in range(inputSize):
@@ -79,30 +92,69 @@ def linClassifier(inputSize):
         W_k[1][n] = random.random()
         W_k[2][n] = random.random()
     
-    # Loading data
-    (xallTraining), (validationset, validationLabels) = getDataSets(loadData(),labels, validationSize, inputSize)
+
+    (xallTraining), (validationSet, validationLabels) = getDataSets(loadData(),labels, validationSize, inputSize)
+    W_k, trainingError = train(xallTraining, labels, W_k, batchSize, inputSize, iterations, alpha)
+
+    validationSize, nrOfFeatures = validationSet.shape
     
-    trainingError = 1
-    prevTrainingError = 2
-    errorMargin = 0.1
+    actuals = np.array([])
+    predictions = np.array([])
+
+    for index in range(validationSize):
+        x_k = validationSet[:][index]
+        t_k = validationLabels[:][index]
+        output = runClassifier(x_k, W_k)
+        prediction = getPredictionFromOutput(output)
+        predictions = np.append(predictions, names[np.argmax(prediction)])
+        actuals = np.append(actuals, names[np.argmax(t_k)])
+
+
+    confusionMatrix = getConfMatrix(predictions, actuals, list(names.values()))
+
+    plt.imshow(confusionMatrix)
+    plt.colorbar()
+    plt.xlabel(list(names.values()))
+    plt.ylabel(list(names.values()))
+    plt.show()
+    print("tihi")
+
+
+def getConfMatrix(predictions, labels, labelNames):
+    actual = pd.Categorical(labels, categories=labelNames)
+    predicted = pd.Categorical(predictions, categories=labelNames)
+    confMatrix = pd.crosstab(actual, predicted, normalize=False)
+    return confMatrix
+    
+
+def runClassifier(x_k, W_k):
+    z_k = np.matmul(W_k, x_k)
+    g_k = sigmoid(z_k)
+    return g_k
+
+def train(xallTraining, labels, W_k, batchSize, inputSize, iterations, alpha, errorMargin = 0.08):
+    trainingError = 1000
+    prevTrainingError = 2000
+    counter = 1
     while trainingError > errorMargin:
-        if prevTrainingError > trainingError:
-            iterations *= 2
+        if prevTrainingError - errorMargin/10 < trainingError:
+            print("it++")
+            iterations += 200
         else:
             alpha *= 0.8
+            print("alpha: ", alpha)
+        prevTrainingError = trainingError
         trainingError = 0
         for it in range(iterations):
             # Get new batch
             batch, batchLabels = getBatch(xallTraining, labels, batchSize, inputSize)
-            dataSize, nrOfFeatures = batch.shape
+            # dataSize, nrOfFeatures = batch.shape
 
             grad_MSE_W = 0
             MSE = 0
             for index in range(batchSize):
                 x_k = batch[:][index].reshape(inputSize, 1)
                 t_k = batchLabels[:][index].reshape(3, 1)
-                # (grad_MSE_W_temp, MSE_temp) = train(x_k, t_k, W_k, dataSize, MSE, grad_MSE_W)
-
                 z_k = np.matmul(W_k, x_k)
                 g_k = sigmoid(z_k)
                 MSE += float(0.5*np.matmul(np.transpose(g_k-t_k),(g_k-t_k)))
@@ -110,38 +162,13 @@ def linClassifier(inputSize):
                 grad_g_zk = np.multiply(g_k,(1-g_k))
                 grad_W_zk = np.transpose(x_k)
                 grad_MSE_W += np.matmul(np.multiply(grad_MSE_gk, grad_g_zk), grad_W_zk)
-            print("Iteration nr: ", it, "\tMSE/batchSize = ", MSE/batchSize)
+            # print("Iteration nr: ", it, "\tMSE/batchSize = ", MSE/batchSize)
             W_k = W_k - alpha*grad_MSE_W
             trainingError += MSE/batchSize
         trainingError = trainingError/iterations
-
-    validationSize, nrOfFeatures = validationSet.shape
-    
-    MSE_valid = 0
-    for index in range(validationSize):
-        x_k = validationSet[:][index]
-        t_k = validation_t_k[:][index]
-        MSE_temp, g_k = runOnNetwork(x_k, t_k, W_k, MSE_valid)
-        MSE_valid = MSE_temp
-        print("\nOutput:\t\t", g_k, "\nActual Class:\t", t_k)
-    print("Validation error: ", MSE_valid)
-
-
-def runOnNetwork(x_k, t_k, W_k, MSE):
-    z_k = np.matmul(W_k, x_k)
-    g_k = sigmoid(z_k)
-    MSE += float(0.5*np.matmul(np.transpose(g_k-t_k),(g_k-t_k)))
-    return MSE, g_k
-
-def train(x_k, t_k, W_k, dataSize, MSE, grad_MSE_W):
-    z_k = np.matmul(W_k, x_k)
-    g_k = sigmoid(z_k)
-    MSE += float(0.5*np.matmul(np.transpose(g_k-t_k),(g_k-t_k)))
-    grad_MSE_gk = g_k-t_k
-    grad_g_zk = np.multiply(g_k,(1-g_k))
-    grad_W_zk = np.transpose(x_k)
-    grad_MSE_W += np.matmul(np.multiply(grad_MSE_gk, grad_g_zk), grad_W_zk)
-    return grad_MSE_W, MSE
+        print("Training session: ", counter, "\t\tError: ", trainingError)
+        counter += 1
+    return W_k, trainingError
 
 
 
