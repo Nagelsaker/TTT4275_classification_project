@@ -11,13 +11,13 @@ from astropy.io import ascii
 
 
 def main():
-    linClassifier(5)
+    linClassifier(2)
     # dataPlotter() # Used in task 1b
 
 def linClassifier(inputSize):
     alpha = 0.005
     batchSize = 30
-    iterations = 5000
+    iterations = 1000
     trainingSize = 30
     validationSize = 50 - trainingSize
 
@@ -37,7 +37,7 @@ def linClassifier(inputSize):
         W_k[2][n] = random.random()
     
     # Load data
-    (xallTraining), (validationSet, validationLabels) = getDataSets(loadData(),labels, trainingSize, validationSize, inputSize)
+    (xallTraining), (validationSet, validationLabels) = getDataSets(loadData(),labels, trainingSize, validationSize, 5, columns=[2,1,0])
     # Train model
     W_k = train(xallTraining, (validationSet, validationLabels), labels, names, W_k, batchSize, inputSize, iterations, alpha)
 
@@ -55,6 +55,7 @@ def linClassifier(inputSize):
 
 def runOnData(data, labels, names, W_k):
     inputSize = data.shape[1]
+    print("inputsize ", inputSize)
     actuals = np.array([])
     predictions = np.array([])
 
@@ -69,7 +70,7 @@ def runOnData(data, labels, names, W_k):
 
     return predictions, actuals
 
-def train(xallTraining, validation, labels, names, W_k, batchSize, inputSize, iterations, alpha, errorMargin = 0.089):
+def train(xallTraining, validation, labels, names, W_k, batchSize, inputSize, iterations, alpha, errorMargin = 0.04):
     trainingError = 1000
     prevTrainingError = 2000
     counter = 1
@@ -80,7 +81,7 @@ def train(xallTraining, validation, labels, names, W_k, batchSize, inputSize, it
             iterations += 200
         else:
             alpha *= 0.8
-            print("alpha: ", alpha)
+            # print("alpha: ", alpha)
         prevTrainingError = eRate
         trainingError = 0
         for it in range(iterations):
@@ -152,11 +153,10 @@ def getDataSets(dataList, labels, trainingSize, validationSize, inputSize, colum
     # Remove specified columns, if any
     if columns != None:
         for col in columns:
-            np.delete(x1allTraining, col, axis=1)
-            np.delete(x2allTraining, col, axis=1)
-            np.delete(x3allTraining, col, axis=1)
-            np.delete(validationSet, col, axis=1)
-            np.delete(validation_t_k, col, axis=1)
+            x1allTraining = np.delete(x1allTraining, col, axis=1)
+            x2allTraining = np.delete(x2allTraining, col, axis=1)
+            x3allTraining = np.delete(x3allTraining, col, axis=1)
+            validationSet = np.delete(validationSet, col, axis=1)
 
     return (x1allTraining, x2allTraining, x3allTraining), (validationSet, validation_t_k)
 
