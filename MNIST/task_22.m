@@ -1,5 +1,7 @@
 %problem 2
 
+%Dividing the set of training vectors into a sets containing only training
+%vectors from one class. 
 trainv_0 = zeros(8000,vec_size);
 trainv_1 = zeros(8000,vec_size);
 trainv_2 = zeros(8000,vec_size);
@@ -76,6 +78,7 @@ trainv_7 = trainv_7(1:row_7,:);
 trainv_8 = trainv_8(1:row_8,:);
 trainv_9 = trainv_9(1:row_9,:);
 
+%Clustering of training vectors
 M = 64;
 [idx_0,C_0] = kmeans(trainv_0,M);
 [idx_1,C_1] = kmeans(trainv_1,M);
@@ -92,11 +95,15 @@ C = [C_0;C_1;C_2;C_3;C_4;C_5;C_6;C_7;C_8;C_9];
 trainlab_2 = [0*ones(M,1);1*ones(M,1);2*ones(M,1);3*ones(M,1);4*ones(M,1);5*ones(M,1);
             6*ones(M,1);7*ones(M,1);8*ones(M,1);9*ones(M,1)];
 
+%Classifying the test images
 Mdl = fitcknn(C, trainlab_2);
+%Mdl = fitcknn(C, trainlab_2,'NumNeighbors',7); %Uncomment this to use
+%KNN-classifier
 predicted_labels = predict(Mdl,testv);
-
 conf = confusionmat(testlab,predicted_labels);
+cm = confusionchart(testlab,predicted_labels);
 
+%Findning error rate
 error_count = 0;
 for k=1:num_test
     if testlab(k) ~= predicted_labels(k)
